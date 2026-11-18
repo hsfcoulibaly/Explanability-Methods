@@ -1,0 +1,1 @@
+this is your part for training the CNN on the CIFAR dataset or a SUbdataset of imagenet

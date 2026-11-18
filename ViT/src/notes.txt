@@ -1,0 +1,8 @@
+This is my part the ViT training on the CIFAR dataset
+
+
+do not forget to train the model on 10, 20, 30 epochs
+
+The first test will be on 10 and graudally increase the epochs
+
+train on accuracy 
