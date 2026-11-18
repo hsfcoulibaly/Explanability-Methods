@@ -1,0 +1,54 @@
+{
+  "train_size": 50000,
+  "test_size": 10000,
+  "n_classes": 100,
+  "image_shape_raw": [
+    32,
+    32,
+    3
+  ],
+  "train_per_class": [
+    500,
+    500
+  ],
+  "test_per_class": [
+    100,
+    100
+  ],
+  "eval_subset_per_class": {
+    "min": 3,
+    "max": 16,
+    "mean": 10.0,
+    "classes_missing": 0
+  },
+  "cifar100_mean": [
+    0.5071,
+    0.4865,
+    0.4409
+  ],
+  "cifar100_std": [
+    0.2673,
+    0.2564,
+    0.2762
+  ],
+  "imagenet_mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "imagenet_std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "subset_vs_test": {
+    "brightness_mean": [
+      0.4793772123927696,
+      0.4755446359272876
+    ],
+    "contrast_mean": [
+      0.19354380893155468,
+      0.19491775085932878
+    ]
+  }
+}

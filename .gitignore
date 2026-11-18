@@ -1,0 +1,6 @@
+﻿ViT/data/
+__pycache__/
+*.pyc
+Results/*.log
+Results/*.aux
+Results/*.out

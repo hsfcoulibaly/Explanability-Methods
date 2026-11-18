@@ -13,8 +13,10 @@ A ResNet-50 and a DeiT-Small are fine-tuned on CIFAR-100 under an identical pipe
 ViT/
   requirements.txt
   notebooks/
-    vit_train.ipynb      Colab: train DeiT, evaluate, sanity check
-    cnn_train.ipynb      Colab: train ResNet-50, evaluate, sanity check
+    run_all.ipynb        Colab: train both models, score all methods (start here)
+    analysis.ipynb       Colab: EDA, verification, explanations -> EDA/ figures/ Results/
+    vit_train.ipynb      Colab: DeiT only (older)
+    cnn_train.ipynb      Colab: ResNet-50 only (older)
   src/                   shared code, used by BOTH models (run from ViT/)
     data.py              CIFAR-100 at 224x224, fixed 1,000-image eval subset
     models.py            ResNet-50 / DeiT-Small builders (timm), checkpoints
@@ -22,13 +24,18 @@ ViT/
     metrics.py           deletion / insertion AUC
     run_eval.py          score model x explainer pairs -> results.json
     sanity.py            cascading model-randomization check
+    verify.py            CIs, inverted-map control, Grad-CAM hook ablation, per-class accuracy
     explain/             gradcam.py, ig.py, rollout.py, random_map.py
-EDA/  Results/  figures/ notes and outputs for the report
+EDA/                     eda.py (CIFAR-100 EDA), eda_summary.json, per-class accuracy
+figures/                 every figure (eda_*.png, curves, CIs, heatmaps, sanity, ...)
+Results/                 faithfulness.csv, CI / control tables, final_report.tex and PDF
 ```
 
 `dataset/` is unused: CIFAR-100 is downloaded automatically by torchvision into `ViT/data/`.
 
 ## Running (Google Colab, GPU runtime)
+
+Order: `run_all.ipynb` (train + scores), then `analysis.ipynb` (EDA + verification). The analysis notebook zips its outputs; unzip at the repo root and push.
 
 Open `ViT/notebooks/cnn_train.ipynb` or `vit_train.ipynb`, set the repo URL in the clone cell, and run top to bottom. Checkpoints and results are saved to Google Drive.
 

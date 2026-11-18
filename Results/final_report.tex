@@ -1,0 +1,127 @@
+\documentclass[10pt,twocolumn]{article}
+\usepackage[margin=0.75in,columnsep=0.25in]{geometry}
+\usepackage{graphicx,booktabs,amsmath,xcolor,caption,hyperref,float}
+\graphicspath{{../figures/}}
+\captionsetup{font=small,labelfont=bf}
+
+% Red marker for anything not yet verified / still to fill in.
+\newcommand{\todo}[1]{{\color{red}[#1]}}
+% Include a figure if it exists, otherwise a placeholder box (so the draft compiles).
+\newcommand{\fig}[3]{\begin{figure}[t]\centering
+  \IfFileExists{../figures/#1}{\includegraphics[width=\linewidth]{#1}}%
+  {\fbox{\parbox{0.9\linewidth}{\centering\todo{figure \detokenize{#1} missing: run analysis.ipynb}}}}
+  \caption{#2}\label{#3}\end{figure}}
+
+\title{Do Explanation Methods Stay Faithful on Vision Transformers?\\
+\large A Quantitative Comparison of Grad-CAM, Integrated Gradients and Attention Rollout on ResNet-50 and DeiT-Small}
+\author{Hassan Coulibaly\thanks{\todo{PantherID, email}}\\Georgia State University}
+\date{\todo{December 2026}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Saliency heatmaps are widely used to explain image classifiers, yet most were designed for convolutional networks (CNNs) and are rarely tested for faithfulness on Vision Transformers (ViTs). We fine-tune an ImageNet-pretrained ResNet-50 and DeiT-Small on CIFAR-100 under an identical pipeline (82.3\% and 87.9\% test accuracy) and score Grad-CAM, Integrated Gradients (IG) and, for the ViT, attention rollout with one shared deletion/insertion metric on a fixed set of 1{,}000 test images, always against a random-map baseline. Grad-CAM is clearly faithful on the CNN but barely better than random on the ViT, whereas IG is the most consistent method across both architectures and rollout lies in between. A mean-color removal check confirms the insertion ranking but exposes an artifact of the deletion metric. \todo{Update with verification results (CIs, inverted-map control, sanity check, hook ablation).}
+\end{abstract}
+
+\section{Introduction}
+Explanation methods such as Grad-CAM~\cite{gradcam} produce a heatmap of the image regions a model supposedly used. A heatmap can look convincing without reflecting the model's computation, so explanations should be tested, not trusted~\cite{adebayo}. Since ViTs~\cite{vit,deit} are replacing CNNs~\cite{resnet}, an open question is whether CNN-era methods transfer to them. We ask: \emph{do Grad-CAM and Integrated Gradients remain faithful on a ViT, and how do they compare with a ViT-specific method, attention rollout?}
+
+\section{Related Work}
+\textbf{Attribution methods.} Grad-CAM~\cite{gradcam} weights a layer's activations by pooled gradients. Integrated Gradients~\cite{ig} integrates gradients along a path from a baseline to the input and is architecture-agnostic. Attention rollout~\cite{rollout} propagates attention through the layers of a transformer; it is class-agnostic. Transformer-specific relevance methods~\cite{chefer} improve on these.
+\textbf{Evaluation.} Deletion and insertion~\cite{rise} measure how the target probability changes as regions are removed or restored in order of importance. Randomization tests~\cite{adebayo} check that explanations depend on learned weights. ViTs are known to tolerate removed patches better than CNNs~\cite{naseer}, which affects cross-architecture comparison.
+
+\section{Method}
+\textbf{Models and training.} ResNet-50 and DeiT-Small (timm, ImageNet-1k weights) are fine-tuned on CIFAR-100 with the same loader: 224$\times$224 inputs, ImageNet normalization, AdamW with warm-up and cosine decay, label smoothing 0.1, 3 epochs. CIFAR-100 is used rather than ImageNet subsets to avoid pretraining leakage.
+
+\textbf{Explainers.} Grad-CAM on \texttt{layer4[-1]} (ResNet) and the input of the last block, \texttt{blocks[-1].norm1}, for DeiT (patch tokens reshaped to $14\times14$; the block output carries almost no patch gradient because only the CLS token reaches the head). IG uses a black baseline, 32 steps and the absolute value summed over channels. Rollout averages heads, adds the identity, renormalizes and multiplies across layers~\cite{rollout}. A random map is the floor.
+
+\textbf{Metric.} For a map $s$ the cells ($8\times8$ pixels, which do not align with the 16px ViT patches) are ranked by importance. Deletion replaces the top-$k$ cells with their ``removed'' version (Gaussian blur, or the mean color as a check) and tracks the target-class probability $p_k$; insertion starts from the removed image and restores cells. The score is the area under the curve,
+\begin{equation}\label{eq:auc}
+\mathrm{AUC}=\int_0^1 p(f)\,df \approx \sum_{k}\tfrac{1}{2}\,(p_{k}+p_{k+1})\,\Delta f,
+\end{equation}
+over 50 steps. Lower is better for deletion and higher for insertion. All models and methods use the same code and the same 1{,}000 test images (seed 0).
+
+\section{Experiments}
+\textbf{Data.} CIFAR-100: 50{,}000 train and 10{,}000 test images, 100 balanced classes, $32\times32$ pixels, upscaled to 224. Hence heatmaps are blocky and the eval subset averages about 10 images per class (\todo{check EDA numbers in \texttt{EDA/eda\_summary.json}}).
+
+\textbf{Accuracy.} ResNet-50: 82.34\%; DeiT-Small: 87.88\%. The 5.5-point gap should be kept in mind when comparing faithfulness.
+
+\subsection{Faithfulness results}
+\begin{table}[t]
+\centering\small
+\caption{Deletion (lower is better) and insertion (higher is better) AUC, blur removal, $n{=}1000$.}\label{tab:blur}
+\begin{tabular}{llcc}
+\toprule
+Model & Method & Del $\downarrow$ & Ins $\uparrow$\\
+\midrule
+ResNet-50 & Grad-CAM & \textbf{0.189} & \textbf{0.543}\\
+ & IG & 0.208 & 0.478\\
+ & Random & 0.217 & 0.217\\
+\midrule
+DeiT-S & Grad-CAM & 0.432 & 0.471\\
+ & IG & \textbf{0.337} & \textbf{0.580}\\
+ & Rollout & 0.362 & 0.548\\
+ & Random & 0.433 & 0.431\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering\small
+\caption{Same scores with mean-color removal.}\label{tab:mean}
+\begin{tabular}{llcc}
+\toprule
+Model & Method & Del $\downarrow$ & Ins $\uparrow$\\
+\midrule
+ResNet-50 & Grad-CAM & 0.128 & 0.502\\
+ & IG & 0.130 & 0.397\\
+ & Random & 0.088 & 0.088\\
+\midrule
+DeiT-S & Grad-CAM & 0.388 & 0.447\\
+ & IG & 0.281 & 0.531\\
+ & Rollout & 0.320 & 0.519\\
+ & Random & 0.306 & 0.306\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:blur} shows that all methods beat random on the CNN, with Grad-CAM best (insertion 0.33 above random). On the ViT, Grad-CAM matches random on deletion (0.432 vs.\ 0.433) and is only 0.04 above it on insertion; IG and rollout are clearly better (insertion +0.149 and +0.117 over random). Absolute ViT scores are higher because the ViT is more robust to blurred cells, so each method should be read relative to its own random baseline. With mean-color removal (Table~\ref{tab:mean}) insertion again ranks all methods above random, but deletion does not: random deletion on the CNN (0.088) is lower than Grad-CAM and IG, and ViT Grad-CAM is worse than random. Gray fill is out of distribution and appears to dominate deletion, so we do not read these deletion numbers as evidence of unfaithful maps. \todo{Confirm with second removal strategy.}
+
+\fig{heatmaps.png}{Example heatmaps. ResNet Grad-CAM is compact on the object; ViT Grad-CAM is scattered; rollout is smooth but coarse; IG is speckled on both models. \todo{Use qualitative\_all\_methods.png.}}{fig:heat}
+
+\subsection{Verification}
+\textbf{Confidence intervals.} \todo{Insert paired difference vs.\ random with 95\% bootstrap CIs from \texttt{Results/faithfulness\_ci.csv} and Fig.~\ref{fig:ci}.}
+\fig{faithfulness_vs_random_ci.png}{Paired difference from random with 95\% bootstrap CIs.}{fig:ci}
+\textbf{Inverted-map control.} If a map matters, inverting it must hurt: deletion higher, insertion lower. \todo{Report \texttt{Results/inverted\_control.csv}.}
+\fig{inverted_control.png}{Inverted-map control.}{fig:inv}
+\textbf{Randomization sanity check.} \todo{Report \texttt{Results/sanity\_vit.json} / \texttt{sanity\_cnn.json}.}
+\fig{sanity_randomization.png}{Cascading randomization: correlation with the original map.}{fig:sanity}
+
+\subsection{Explanations of the results}
+\textbf{Why is ViT Grad-CAM weak?} \todo{Report the hook ablation (Fig.~\ref{fig:hook}): if another target layer scores much better, the weakness is a hook-choice effect rather than Grad-CAM itself.}
+\fig{gradcam_hook_ablation.png}{Grad-CAM target layer ablation on DeiT-Small.}{fig:hook}
+\textbf{Method agreement.} \todo{Report \texttt{method\_agreement.png}: how similar the maps are across methods.}
+
+\section{Limitations}
+One seed and one dataset; 3 fine-tuning epochs; a 5.5-point accuracy gap between models; CIFAR images upscaled from 32 pixels; cells of 8 pixels versus 16-pixel ViT patches; deletion/insertion depends on how ``removed'' is defined.
+
+\section{Conclusion}
+Grad-CAM, designed for CNNs, is faithful on ResNet-50 but close to random on DeiT-Small in our setting, while Integrated Gradients is the most consistent across architectures. Heatmaps should be validated with a metric and a random baseline rather than judged by eye. \todo{Finalize after the verification section is complete.}
+
+\section*{Peer evaluation}
+\todo{Project completed individually after the teammate withdrew; AI assistance (Claude) was used for code and debugging, the experiments, results and analysis are the author's.}
+
+\begin{thebibliography}{99}\small
+\bibitem{gradcam} R. Selvaraju et al. Grad-CAM: visual explanations from deep networks via gradient-based localization. ICCV 2017.
+\bibitem{ig} M. Sundararajan, A. Taly, Q. Yan. Axiomatic attribution for deep networks. ICML 2017.
+\bibitem{rollout} S. Abnar, W. Zuidema. Quantifying attention flow in transformers. ACL 2020.
+\bibitem{chefer} H. Chefer, S. Gur, L. Wolf. Transformer interpretability beyond attention visualization. CVPR 2021.
+\bibitem{rise} V. Petsiuk, A. Das, K. Saenko. RISE: randomized input sampling for explanation of black-box models. BMVC 2018.
+\bibitem{adebayo} J. Adebayo et al. Sanity checks for saliency maps. NeurIPS 2018.
+\bibitem{vit} A. Dosovitskiy et al. An image is worth 16x16 words: transformers for image recognition at scale. ICLR 2021.
+\bibitem{deit} H. Touvron et al. Training data-efficient image transformers and distillation through attention. ICML 2021.
+\bibitem{resnet} K. He et al. Deep residual learning for image recognition. CVPR 2016.
+\bibitem{naseer} M. Naseer et al. Intriguing properties of vision transformers. NeurIPS 2021.
+\end{thebibliography}
+\end{document}

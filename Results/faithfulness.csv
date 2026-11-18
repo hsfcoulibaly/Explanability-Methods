@@ -1,0 +1,15 @@
+model,method,removal,deletion,insertion,n,test_acc
+cnn,gradcam,blur,0.1885,0.5425,1000,0.8234
+cnn,ig,blur,0.2083,0.4778,1000,0.8234
+cnn,random,blur,0.2165,0.2165,1000,0.8234
+vit,gradcam,blur,0.4318,0.4707,1000,0.8788
+vit,ig,blur,0.3368,0.5797,1000,0.8788
+vit,rollout,blur,0.3623,0.5479,1000,0.8788
+vit,random,blur,0.4327,0.4305,1000,0.8788
+cnn,gradcam,mean,0.1283,0.5017,1000,0.8234
+cnn,ig,mean,0.1295,0.3974,1000,0.8234
+cnn,random,mean,0.0876,0.0879,1000,0.8234
+vit,gradcam,mean,0.3883,0.4466,1000,0.8788
+vit,ig,mean,0.2807,0.5306,1000,0.8788
+vit,rollout,mean,0.3195,0.5189,1000,0.8788
+vit,random,mean,0.3062,0.3059,1000,0.8788
