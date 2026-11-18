@@ -2,6 +2,8 @@
 
 A ResNet-50 and a DeiT-Small are fine-tuned on CIFAR-100 under an identical pipeline, explained with the same methods, and scored with one shared deletion/insertion faithfulness metric on a fixed 1,000-image evaluation subset.
 
+**Question:** do explanation methods built for CNNs (Grad-CAM, Integrated Gradients) still tell the truth on Vision Transformers, compared with a ViT-specific method (attention rollout)?
+
 | Model | Explainers |
 |---|---|
 | ResNet-50 (`cnn`) | Grad-CAM, Integrated Gradients, random baseline |
@@ -37,7 +39,8 @@ Results/                 faithfulness.csv, CI / control tables, final_report.tex
 
 Order: `run_all.ipynb` (train + scores), then `analysis.ipynb` (EDA + verification). The analysis notebook zips its outputs; unzip at the repo root and push.
 
-Open `ViT/notebooks/cnn_train.ipynb` or `vit_train.ipynb`, set the repo URL in the clone cell, and run top to bottom. Checkpoints and results are saved to Google Drive.
+1. Open `ViT/notebooks/run_all.ipynb` in Colab (File > Open notebook > GitHub > `hsfcoulibaly/Explanability-Methods`), pick an A100/L4 GPU, Run all. It clones the repo, trains both models (3 epochs), runs all scores, and saves checkpoints and `results.json` to Google Drive (`xai-cnn-vit/`). Finished steps are skipped, so after a disconnect rerun the setup cell and Run all.
+2. Open `ViT/notebooks/analysis.ipynb` and run it to produce the EDA, verification and explanation outputs.
 
 Or from a terminal inside `ViT/`:
 
@@ -65,6 +68,31 @@ python -m src.sanity --arch vit --ckpt ckpt/vit.pt --out Results/sanity_vit.json
 - Deletion/insertion: `src/metrics.py` (8x8-pixel cells, 50 steps, Gaussian-blur removal by default).
 - Integrated Gradients: black baseline, 32 steps, absolute value summed over channels.
 
+## Results so far
+
+Fine-tuned for 3 epochs; test accuracy: ResNet-50 **82.3%**, DeiT-Small **87.9%**. Faithfulness on the fixed 1,000 images (blur removal; deletion lower = better, insertion higher = better). Full table incl. mean-color removal: `Results/faithfulness.csv`.
+
+| Model | Method | Deletion | Insertion |
+|---|---|---|---|
+| ResNet-50 | Grad-CAM | 0.189 | 0.543 |
+| ResNet-50 | IG | 0.208 | 0.478 |
+| ResNet-50 | random | 0.217 | 0.217 |
+| DeiT-Small | Grad-CAM | 0.432 | 0.471 |
+| DeiT-Small | IG | 0.337 | 0.580 |
+| DeiT-Small | rollout | 0.362 | 0.548 |
+| DeiT-Small | random | 0.433 | 0.431 |
+
+Read each method against its own random baseline: ViTs tolerate blurred cells better, so absolute ViT scores are higher. Grad-CAM beats random clearly on the CNN but is close to random on the ViT; IG is the most consistent across both. With mean-color removal the insertion ranking holds but deletion is unreliable (gray fill is out of distribution).
+
 ## Status
 
-Code implemented and smoke-tested on CPU with random inputs. Fine-tuning and the final results on Colab are in progress; see `Results/`.
+- Done: pipeline, training, all scores (blur and mean removal), EDA (`EDA/`, `figures/eda_*`), report draft (`Results/final_report.tex` / `.pdf`).
+- To run in `analysis.ipynb`: confidence intervals, inverted-map control, randomization sanity check, Grad-CAM hook ablation, per-class accuracy, qualitative heatmaps. Then fill the red `[...]` sections of the report.
+- Not tracked in git: `ViT/data/` (CIFAR-100 downloads itself).
+
+## Compiling the report
+
+```bash
+cd Results
+pdflatex final_report.tex && pdflatex final_report.tex
+```
